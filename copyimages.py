@@ -1,12 +1,13 @@
 # coding:utf-8
 
+import glob
 import os
 import shutil
-import sys
-
 from datetime import datetime
+from os.path import join, split, exists
 
 import exifread
+from tqdm import tqdm
 
 from constants import (
     DATABASE_PHOTOS_PATH,
@@ -17,40 +18,41 @@ from constants import (
 
 def import_images(source_path):
     """ Find attached storage and run importing all existing images """
-    copied, total = 0, 0
-    for r, d, files in os.walk(source_path):
-        images = filter(lambda x: x.upper().endswith('JPG'), files)
+    print(source_path)
 
-        for image in images:
-            total += 1
-            with open(os.path.join(source_path, r, image), 'rb') as f:
-                try:
-                    created = str(exifread.process_file(f)['Image DateTime'])
-                except:
-                    continue
+    globs = []
+    for ext in ('jpg', 'jpeg', 'JPG', 'JPEG'):
+        globs += glob.glob(join(source_path, '**', '*.' + ext))
 
-                d = datetime.strptime(created.split()[0], '%Y:%m:%d')
+    for path in tqdm(globs, 'coping', unit='image'):
+        process_image(path)
 
-                targetpath = os.path.join(
-                    DATABASE_PHOTOS_PATH, '{:02}'.format(d.month),
-                    '{:02}'.format(d.day))
-                target = os.path.join(targetpath, image)
 
-                if not os.path.exists(target):
-                    try:
-                        os.makedirs(targetpath)
-                    except:
-                        pass
-                    shutil.copyfile(os.path.join(source_path, r, image), target)
-                    copied += 1
+def process_image(image_path):
+    with open(image_path, 'rb') as f:
+        try:
+            created = str(exifread.process_file(f, 'Image DateTime')['Image DateTime'])
+            d = datetime.strptime(created.split()[0], '%Y:%m:%d')
+            targetpath = join(DATABASE_PHOTOS_PATH, '{:02}'.format(d.year), '{:02}'.format(d.month),
+                              '{:02}'.format(d.day))
+        except:
+            targetpath = join(DATABASE_PHOTOS_PATH, 'UNTAGGED')
 
-                sys.stdout.write('.')
+        target = join(targetpath, split(image_path)[1])
+
+        if not exists(target):
+            try:
+                os.makedirs(targetpath)
+            except:
+                pass
+            shutil.copyfile(image_path, target)
+
 
 if __name__ == '__main__':
 
     source_path = None
     for each in POSSIBLE_STORAGE_PATHS:
-        if os.path.exists(SYSTEM_PREPATH.format(each)):
+        if exists(SYSTEM_PREPATH.format(each)):
             source_path = SYSTEM_PREPATH.format(each)
             break
 
