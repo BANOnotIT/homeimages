@@ -1,83 +1,82 @@
 # coding:utf-8
 
+import glob
 import os
 import subprocess
+from os.path import join, exists, split
 
-from hachoir_core.error import HachoirError
-from hachoir_core.stream import InputIOStream
-from hachoir_metadata import extractMetadata
-from hachoir_parser import guessParser
+from hachoir.metadata import extractMetadata
+from hachoir.parser import createParser
+from tqdm import tqdm
 
-from .constants import (
-    DATABASE_VIDEOS_PATH,
+from constants import (
     POSSIBLE_STORAGE_PATHS,
-    SYSTEM_PREPATH
+    SYSTEM_PREPATH,
+    DATABASE_VIDEOS_PATH
 )
 
 
-PATH = None
-
-for each in POSSIBLE_STORAGE_PATHS:
-    if os.path.exists(SYSTEM_PREPATH.format(each)):
-        PATH = SYSTEM_PREPATH.format(each)
-        break
-
-if not PATH:
-    raise ValueError('Video source path not found')
-
-
-def metadata_for_filelike(filelike):
-    try:
-        filelike.seek(0)
-    except (AttributeError, IOError):
-        return None
-
-    stream = InputIOStream(filelike, None, tags=[])
-    parser = guessParser(stream)
-
+def metadata_for_filelike(filename):
+    parser = createParser(filename)
     if not parser:
         return None
 
-    try:
-        metadata = extractMetadata(parser)
-    except HachoirError:
-        return None
+    with parser:
+        try:
+            metadata = extractMetadata(parser)
+        except:
+            return None
 
     return metadata
 
 
-CMD = 'ffmpeg -i "{}" -vcodec h264 -acodec aac -strict -2 "{}"'
+CMD = 'ffmpeg -loglevel panic -i "{}" -vcodec h264 -acodec aac -strict -2 "{}"'
+
+
+def import_videos(source_path):
+    """ Find attached storage and run importing all existing images """
+    print(source_path)
+
+    globs = []
+    for ext in ('mov', 'MOV'):
+        globs += glob.glob(join(source_path, '**', '*.' + ext))
+
+    for path in tqdm(globs, 'processing', unit='video'):
+        process_video(path)
+
+
+def process_video(video_path):
+    metadata = metadata_for_filelike(video_path)
+    if metadata:
+        d = metadata.get('creation_date')
+        targetpath = join(DATABASE_VIDEOS_PATH, '{:02}'.format(d.year), '{:02}'.format(d.month),
+                          '{:02}'.format(d.day))
+    else:
+        targetpath = join(DATABASE_VIDEOS_PATH, 'UNTAGGED')
+
+    target = os.path.join(targetpath, split(video_path)[1].lower().replace('.mov', '.mp4'))
+
+    if not os.path.exists(target):
+        try:
+            os.makedirs(targetpath)
+        except:
+            pass
+
+        # print(CMD.format(video_path, target))
+
+        p = subprocess.Popen(CMD.format(video_path, target), shell=True)
+        p.wait()
+
 
 if __name__ == '__main__':
 
-    copied, total = 0, 0
-    for r, dirs, files in os.walk(PATH):
-        videos = filter(lambda x: x.upper().endswith('MOV'), files)
+    source_path = None
+    for each in POSSIBLE_STORAGE_PATHS:
+        if exists(SYSTEM_PREPATH.format(each)):
+            source_path = SYSTEM_PREPATH.format(each)
+            break
 
-        for video in videos:
-            total += 1
-            with open(os.path.join(PATH, r, video), 'rb') as f:
-                metadata = metadata_for_filelike(f)
-                if not metadata:
-                    print 'No metadata for', video
-                    continue
-                d = metadata.get('creation_date')
+    if not source_path:
+        raise ValueError('Photos source path not found')
 
-                targetpath = os.path.join(
-                    DATABASE_VIDEOS_PATH,
-                    '{:02}'.format(d.month), '{:02}'.format(d.day))
-                target = os.path.join(
-                    targetpath, video.lower().replace('.mov', '.mp4'))
-
-                if not os.path.exists(target):
-                    try:
-                        os.makedirs(targetpath)
-                    except:
-                        pass
-                    copied += 1
-
-                    print CMD.format(
-                        os.path.join(PATH, r, video), target)
-                    p = subprocess.Popen(CMD.format(
-                        os.path.join(PATH, r, video), target), shell=True)
-                    p.wait()
+    import_videos(source_path)
