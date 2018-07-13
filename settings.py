@@ -1,6 +1,12 @@
 # coding:utf-8
 
+
 import os
+
+from hachoir.core import config
+
+# Turn off warnings on parsing
+config.quiet = True
 
 # Path on disk where all images and videos live
 DATABASE_PHOTOS_PATH = os.path.expanduser('~/Изображения/SORTED/IMAGES')

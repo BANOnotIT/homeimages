@@ -1,54 +1,36 @@
 # coding:utf-8
 
-import glob
 import os
-import shutil
-from datetime import datetime
-from os.path import join, split, exists
+from os.path import join, exists, split
 
-import exifread
 from tqdm import tqdm
 
-from constants import (
-    DATABASE_PHOTOS_PATH,
-    POSSIBLE_STORAGE_PATHS,
-    SYSTEM_PREPATH
-)
+from settings import (POSSIBLE_STORAGE_PATHS, SYSTEM_PREPATH, DATABASE_PHOTOS_PATH)
+from utils import get_path_from_metadata, fetch_metadata_from_file, get_files_in_dir_by_exts
 
 
 def import_images(source_path):
     """ Find attached storage and run importing all existing images """
 
-    globs = []
-    for ext in ('jpg', 'jpeg', 'JPG', 'JPEG'):
-        pattern = join(source_path, '**', '*.' + ext)
-        #print('using pattern %s' % pattern)
-        globs += glob.glob(pattern, recursive=True)
+    files = get_files_in_dir_by_exts(source_path, ('jpg', 'jpeg', 'JPG', 'JPEG'))
 
-    # print('\n'.join(globs))
-
-    for path in tqdm(globs, 'processing', unit='image'):
+    for path in tqdm(files, 'processing', unit='image'):
         process_image(path)
 
 
 def process_image(image_path):
-    with open(image_path, 'rb') as f:
+    metadata = fetch_metadata_from_file(image_path)
+    target_dir = join(DATABASE_PHOTOS_PATH, get_path_from_metadata(metadata))
+
+    target = os.path.join(target_dir, split(image_path)[1])
+
+    if not exists(target):
         try:
-            created = str(exifread.process_file(f, 'Image DateTime')['Image DateTime'])
-            d = datetime.strptime(created.split()[0], '%Y:%m:%d')
-            targetpath = join(DATABASE_PHOTOS_PATH, '{:02}'.format(d.year), '{:02}'.format(d.month),
-                              '{:02}'.format(d.day))
+            os.makedirs(target_dir)
         except:
-            targetpath = join(DATABASE_PHOTOS_PATH, 'UNTAGGED')
-
-        target = join(targetpath, split(image_path)[1])
-
-        if not exists(target):
-            try:
-                os.makedirs(targetpath)
-            except:
-                pass
-            shutil.copyfile(image_path, target)
+            pass
+        import shutil
+        shutil.copyfile(image_path, target)
 
 
 if __name__ == '__main__':

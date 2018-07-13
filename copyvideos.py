@@ -1,69 +1,40 @@
 # coding:utf-8
 
-import glob
 import os
-import subprocess
-from os.path import join, exists, split, splitext
+from os.path import join, exists, split
 
-from hachoir.metadata import extractMetadata
-from hachoir.parser import createParser
 from tqdm import tqdm
 
-from constants import (
-    POSSIBLE_STORAGE_PATHS,
-    SYSTEM_PREPATH,
-    DATABASE_VIDEOS_PATH
-)
-
-
-def metadata_for_filelike(filename):
-    parser = createParser(filename)
-    if not parser:
-        return None
-
-    with parser:
-        try:
-            metadata = extractMetadata(parser)
-        except:
-            return None
-
-    return metadata
-
-
-CMD = 'ffmpeg -loglevel panic -i "{}" -vcodec h264 -acodec aac -strict -2 "{}"'
+from settings import (POSSIBLE_STORAGE_PATHS, SYSTEM_PREPATH, DATABASE_VIDEOS_PATH)
+from utils import get_path_from_metadata, fetch_metadata_from_file, get_files_in_dir_by_exts
 
 
 def import_videos(source_path):
     """ Find attached storage and run importing all existing images """
 
-    globs = []
-    for ext in ('mov', 'MOV', 'avi', 'AVI', 'mp4', 'MP4'):
-        globs += glob.glob(join(source_path, '**', '*.' + ext), recursive=True)
+    files = get_files_in_dir_by_exts(source_path, ('mov', 'MOV', 'avi', 'AVI', 'mp4', 'MP4'))
 
-    # print('\n'.join(globs))
-
-    for path in tqdm(globs, 'processing', unit='video'):
+    for path in tqdm(files, 'processing', unit='video'):
         process_video(path)
 
 
 def process_video(video_path):
-    metadata = metadata_for_filelike(video_path)
-    try:
-        d = metadata.get('creation_date')
-        targetpath = join(DATABASE_VIDEOS_PATH, '{:02}'.format(d.year), '{:02}'.format(d.month),
-                          '{:02}'.format(d.day))
-    except:
-        targetpath = join(DATABASE_VIDEOS_PATH, 'UNTAGGED')
+    metadata = fetch_metadata_from_file(video_path)
+    target_dir = join(DATABASE_VIDEOS_PATH, get_path_from_metadata(metadata))
 
-    target = os.path.join(targetpath, splitext(split(video_path)[1])[0] + '.mp4')
+    target = os.path.join(target_dir, split(video_path)[1])
 
-    if not os.path.exists(target):
+    from os.path import splitext
+    target = splitext(target)[0] + '.mp4'
+
+    if not exists(target):
         try:
-            os.makedirs(targetpath)
+            os.makedirs(target_dir)
         except:
             pass
+        import subprocess
 
-        # print(CMD.format(video_path, target))
+        CMD = 'ffmpeg -loglevel panic -i "{}" -vcodec h264 -acodec aac -strict -2 "{}"'
 
         p = subprocess.Popen(CMD.format(video_path, target), shell=True)
         p.wait()
@@ -78,6 +49,6 @@ if __name__ == '__main__':
             break
 
     if not source_path:
-        raise ValueError('Photos source path not found')
+        raise ValueError('Videos source path not found')
 
     import_videos(source_path)
