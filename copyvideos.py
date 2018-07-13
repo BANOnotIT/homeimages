@@ -3,7 +3,7 @@
 import glob
 import os
 import subprocess
-from os.path import join, exists, split
+from os.path import join, exists, split, splitext
 
 from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
@@ -35,11 +35,10 @@ CMD = 'ffmpeg -loglevel panic -i "{}" -vcodec h264 -acodec aac -strict -2 "{}"'
 
 def import_videos(source_path):
     """ Find attached storage and run importing all existing images """
-    print(source_path)
 
     globs = []
-    for ext in ('mov', 'MOV'):
-        globs += glob.glob(join(source_path, '**', '*.' + ext))
+    for ext in ('mov', 'MOV', 'avi', 'AVI', 'mpo', 'MPO', 'mp4', 'MP4'):
+        globs += glob.glob(join(source_path, '**', '*.' + ext), recursive=True)
 
     for path in tqdm(globs, 'processing', unit='video'):
         process_video(path)
@@ -47,14 +46,14 @@ def import_videos(source_path):
 
 def process_video(video_path):
     metadata = metadata_for_filelike(video_path)
-    if metadata:
+    try:
         d = metadata.get('creation_date')
         targetpath = join(DATABASE_VIDEOS_PATH, '{:02}'.format(d.year), '{:02}'.format(d.month),
                           '{:02}'.format(d.day))
-    else:
+    except:
         targetpath = join(DATABASE_VIDEOS_PATH, 'UNTAGGED')
 
-    target = os.path.join(targetpath, split(video_path)[1].lower().replace('.mov', '.mp4'))
+    target = os.path.join(targetpath, splitext(split(video_path)[1])[0] + '.mp4')
 
     if not os.path.exists(target):
         try:

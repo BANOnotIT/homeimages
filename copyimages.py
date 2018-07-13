@@ -18,13 +18,16 @@ from constants import (
 
 def import_images(source_path):
     """ Find attached storage and run importing all existing images """
-    print(source_path)
 
     globs = []
     for ext in ('jpg', 'jpeg', 'JPG', 'JPEG'):
-        globs += glob.glob(join(source_path, '**', '*.' + ext))
+        pattern = join(source_path, '**', '*.' + ext)
+        #print('using pattern %s' % pattern)
+        globs += glob.glob(pattern, recursive=True)
 
-    for path in tqdm(globs, 'coping', unit='image'):
+    #print('\n'.join(globs))
+
+    for path in tqdm(globs, 'processing', unit='image'):
         process_image(path)
 
 
