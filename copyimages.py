@@ -25,7 +25,7 @@ def import_images(source_path):
         #print('using pattern %s' % pattern)
         globs += glob.glob(pattern, recursive=True)
 
-    #print('\n'.join(globs))
+    # print('\n'.join(globs))
 
     for path in tqdm(globs, 'processing', unit='image'):
         process_image(path)

@@ -37,8 +37,10 @@ def import_videos(source_path):
     """ Find attached storage and run importing all existing images """
 
     globs = []
-    for ext in ('mov', 'MOV', 'avi', 'AVI', 'mpo', 'MPO', 'mp4', 'MP4'):
+    for ext in ('mov', 'MOV', 'avi', 'AVI', 'mp4', 'MP4'):
         globs += glob.glob(join(source_path, '**', '*.' + ext), recursive=True)
+
+    # print('\n'.join(globs))
 
     for path in tqdm(globs, 'processing', unit='video'):
         process_video(path)
