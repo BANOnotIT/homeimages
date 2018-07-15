@@ -1,4 +1,4 @@
-Homeimages
+Homeimages py3.5
 ==========
 
 Get all photos and videos sync-ed. Two scripts to sync photos and videos from external SDs.
