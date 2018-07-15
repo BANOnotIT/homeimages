@@ -18,4 +18,8 @@ POSSIBLE_STORAGE_PATHS = ('Изображения/PHOTO', 'EOS_DIGITAL')
 # system path to sd directories
 SYSTEM_PREPATH = '/home/banonotit/{0}/'
 
+CLOUD_PATH = '/home/banonotit/Mail.Cloud 1/Cloud Mail.Ru/'
+
+KEY_FILE = './key-file'
+
 DEFAULT_DIR_NAME = 'UNTAGGED'
