@@ -34,7 +34,7 @@ def process_video(video_path):
             pass
         import subprocess
 
-        CMD = 'ffmpeg -loglevel panic -i "{}" -vcodec h264 -acodec aac -strict -2 "{}"'
+        CMD = 'ffmpeg -loglevel panic -i "{}" -vcodec h264 -acodec aac -crf 17 "{}"'
 
         p = subprocess.Popen(CMD.format(video_path, target), shell=True)
         p.wait()
